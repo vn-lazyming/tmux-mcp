@@ -96,6 +96,9 @@ async def main():
         check("trailing ; kept", out.count("SELECT 1;") >= 2, out)
         err, out = await call("tmux_send", text=r"find . -exec rm {} \;", idle=1)
         check(r"trailing \; kept", out.count(r"{} \;") >= 2, out)
+        block = "-h\nSELECT 1;\nline three"
+        err, out = await call("tmux_send", text=block, paste=True, idle=1)
+        check("paste keeps every line verbatim", not err and all(out.count(l) >= 2 for l in block.split("\n")), out)
         err, out = await call("tmux_send", keys=["C-d"], enter=False)
         check("C-d key", "[at shell prompt]" in out, out)
 
@@ -106,6 +109,10 @@ async def main():
         await call("tmux_send", text="python3 -q")
         err, out = await call("tmux_send", text="print(6*7)")
         check("REPL stays open", "42" in out and "python" in out, out)
+        # typed key by key, the REPL's auto-indent would turn `else:` into a SyntaxError
+        block = "if 1:\n    print('br-' + str(1+1))\nelse:\n    print('no')\n"
+        err, out = await call("tmux_send", text=block, paste=True)
+        check("paste into REPL survives auto-indent", "br-2" in out and "SyntaxError" not in out, out)
         err, out = await call("tmux_send", text="__import__('time').sleep(1.5) or print('slept')")
         check("REPL silent work waited for", "slept" in out, out)
         err, out = await call("tmux_send", keys=["C-d"], enter=False)

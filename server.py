@@ -39,8 +39,8 @@ last_send = {}  # pane id -> snapshot taken just before the last tmux_send typed
 locks = collections.defaultdict(asyncio.Lock)  # parallel sends to one pane would interleave keys
 
 
-def tmux(*args):
-    r = subprocess.run(["tmux", *args], capture_output=True, text=True)
+def tmux(*args, input=None):
+    r = subprocess.run(["tmux", *args], input=input, capture_output=True, text=True)
     if r.returncode:
         err = r.stderr.strip() or f"tmux {args[0]} failed"
         if "can't find" in err or "no server running" in err:
@@ -161,6 +161,13 @@ def type_text(p, text):
         tmux("send-keys", "-t", p, "-H", *["3b"] * (len(text) - len(body)))
 
 
+def paste_text(p, text):
+    """Paste through a tmux buffer: one write, bracketed so REPLs and editors don't auto-indent it."""
+    buf = f"tmux_mcp{p}"  # per pane: the pane lock serialises load and paste, other panes use their own
+    tmux("load-buffer", "-b", buf, "-", input=text)
+    tmux("paste-buffer", "-d", "-p", "-b", buf, "-t", p)
+
+
 def regex(p):
     try:
         return re.compile(p)
@@ -174,6 +181,7 @@ async def tmux_send(
     text: Annotated[str, Field(description="Typed literally, e.g. 'ls -la' or 'SELECT 1;'. Empty to send only keys.")] = "",
     keys: Annotated[list[str] | None, Field(description='tmux key names pressed after text: C-c, C-d, C-z, C-], Up, Down, Left, Right, Tab, BTab, Escape, BSpace, Enter, Home, End, PageUp, PageDown, F1-F12, single chars like "q", with C-/M-/S- modifiers')] = None,
     enter: Annotated[bool, Field(description="Press Enter at the end. False for keys like C-c.")] = True,
+    paste: Annotated[bool, Field(description="Paste `text` through a tmux buffer (bracketed paste) instead of typing it key by key. Use for multi-line or long text, e.g. a code block into python or vim, so auto-indent can't mangle it.")] = False,
     idle: Annotated[float, Field(description="Return once the screen is quiet this long (s) even if not finished. Raise for silent slow commands.", gt=0, le=600)] = 3.0,
     timeout: Annotated[float, Field(description="Hard cap on waiting (s).", gt=0, le=600)] = 60.0,
     target_pane: Annotated[str, Field(description=TARGET_DOC)] = "",
@@ -200,7 +208,7 @@ async def tmux_send(
             note = "[left the copy/scroll mode the pane was in]\n"
         snap = last_send[p] = snapshot(p)
         if text:
-            type_text(p, text)
+            (paste_text if paste else type_text)(p, text)
         if keys:
             tmux("send-keys", "-t", p, "--", *keys)
         if enter:

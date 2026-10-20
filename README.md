@@ -6,7 +6,7 @@ It is not limited to one session: the agent can list every tmux session, window 
 
 ## Tools
 
-- `tmux_send`: type text or keys into any pane
+- `tmux_send`: type or paste text and keys into any pane
 - `tmux_read`: read what's on any pane
 - `tmux_list_panes`: list all sessions, windows and panes
 - `tmux_new`: open a session, window or pane with a name you choose
