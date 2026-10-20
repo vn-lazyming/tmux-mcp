@@ -49,11 +49,7 @@ mcp = FastMCP(
         "Use this instead of a one-shot shell when a command is interactive or must stay "
         "alive between calls: REPLs, gdb, ssh, nc, password prompts, servers, editors. "
         "You are typing into a LIVE tmux pane a human is also watching and typing in "
-        f"(they see it via `tmux attach -t {SESSION}`). State persists between calls: "
-        "a REPL or ssh you start stays open. tmux_send types, tmux_read looks, "
-        "tmux_list_panes finds the human's other panes, tmux_new opens a named session, "
-        "window or pane, tmux_move puts one next to another pane, "
-        "tmux_kill closes one tmux_new opened."
+        f"(they see it via `tmux attach -t {SESSION}`)."
     ),
 )
 
@@ -426,7 +422,7 @@ async def tmux_new(
         Field(
             description=(
                 'Name with no spaces, ":" or ".", e.g. "ming". A session is then reachable '
-                "with `tmux attach -t ming`; tmux_kill(name) closes it."
+                "with `tmux attach -t ming`."
             ),
             pattern=r"^[^\s:.]+$",
         ),
