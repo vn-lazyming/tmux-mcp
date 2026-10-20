@@ -46,6 +46,8 @@ FIELDS = (
 mcp = FastMCP(
     "tmux_mcp",
     instructions=(
+        "Use this instead of a one-shot shell when a command is interactive or must stay "
+        "alive between calls: REPLs, gdb, ssh, nc, password prompts, servers, editors. "
         "You are typing into a LIVE tmux pane a human is also watching and typing in "
         f"(they see it via `tmux attach -t {SESSION}`). State persists between calls: "
         "a REPL or ssh you start stays open. tmux_send types, tmux_read looks, "
@@ -267,6 +269,7 @@ async def tmux_send(  # noqa: PLR0913, PLR0917  # the signature is the tool's AP
     target_pane: Annotated[str, Field(description=TARGET_DOC)] = "",
 ) -> str:
     """Type into the live pane like a human, then return the output that appeared.
+    Prefer this over a one-shot shell for anything interactive or stateful.
 
     Returns once it is finished (shell prompt back, or a REPL/gdb/ssh showing the
     same prompt line as before), or the screen has been quiet `idle` seconds, or
