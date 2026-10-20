@@ -10,6 +10,7 @@ It is not limited to one session: the agent can list every tmux session, window 
 - `tmux_read`: read what's on any pane
 - `tmux_list_panes`: list all sessions, windows and panes
 - `tmux_new`: open a session, window or pane with a name you choose
+- `tmux_move`: move a pane the agent opened next to another one, e.g. yours
 - `tmux_kill`: close one that the agent opened
 
 ## Setup

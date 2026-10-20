@@ -63,8 +63,9 @@ async def main() -> None:
 
         tools = {t.name: t for t in (await s.list_tools()).tools}
         check(
-            "five tools",
-            set(tools) == {"tmux_send", "tmux_read", "tmux_list_panes", "tmux_new", "tmux_kill"},
+            "six tools",
+            set(tools)
+            == {"tmux_send", "tmux_read", "tmux_list_panes", "tmux_new", "tmux_move", "tmux_kill"},
             tools,
         )
         ann = {n: t.annotations for n, t in tools.items() if t.annotations}
@@ -263,6 +264,42 @@ async def main() -> None:
         ):
             err, out = await call("tmux_new", **bad)
             check(f"tmux_new rejects {bad}", err, out)
+
+        # tmux_move: a pane the agent opened lands next to the target, focus stays put
+        err, out = await call("tmux_new", name=f"{S}-mv")
+        mv = target(out) if not err else ""
+        await call("tmux_send", text="sleep 30", target_pane=mv, idle=0.5)
+        active = sh("display", "-p", "-t", f"={S}:", "#{pane_id}")
+        before = int(sh("display", "-p", "-t", f"={S}:", "#{window_panes}"))
+        err, out = await call("tmux_move", name=f"{S}-mv")
+        check(
+            "move joins the pane into the agent window without stealing focus",
+            not err
+            and int(sh("display", "-p", "-t", f"={S}:", "#{window_panes}")) == before + 1
+            and sh("display", "-p", "-t", f"={S}:", "#{pane_id}") == active
+            and f"{S}-mv" not in sh("list-sessions", "-F", "#{session_name}").split(),
+            out,
+        )
+        check(
+            "moved pane keeps its program",
+            "sleep" in sh("display", "-p", "-t", mv, "#{pane_current_command}"),
+        )
+        err, out = await call("tmux_list_panes")
+        check("moved pane is retagged as a pane", f"[opened by agent: pane {S}-mv]" in out, out)
+        err, out = await call("tmux_kill", name=f"{S}-mv")
+        check(
+            "kill after move removes only that pane",
+            not err
+            and mv not in panes()
+            and S in sh("list-sessions", "-F", "#{session_name}").split(),
+            out,
+        )
+        err, out = await call("tmux_move", name=hl_pane)
+        check(
+            "move refuses a pane the agent did not open",
+            err and "Nothing tmux_new opened" in out,
+            out,
+        )
 
         err, out = await call("tmux_read", wait_for="never-appears", timeout=1)
         check("wait_for timeout", "[timeout:" in out, out)

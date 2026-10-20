@@ -52,7 +52,8 @@ mcp = FastMCP(
         f"(they see it via `tmux attach -t {SESSION}`). State persists between calls: "
         "a REPL or ssh you start stays open. tmux_send types, tmux_read looks, "
         "tmux_list_panes finds the human's other panes, tmux_new opens a named session, "
-        "window or pane, tmux_kill closes one tmux_new opened."
+        "window or pane, tmux_move puts one next to another pane, "
+        "tmux_kill closes one tmux_new opened."
     ),
 )
 
@@ -99,6 +100,21 @@ def opened() -> dict[str, tuple[str, str]]:
             kind, _, name = tag.partition(" ")
             mine[p] = (kind, name)
     return mine
+
+
+def find_opened(name: str) -> tuple[str, str, str]:
+    """What tmux_new opened under `name`, or whose pane id is `name`: (pane, kind, name)."""
+    mine = opened()
+    hits = [(p, k, n) for p, (k, n) in mine.items() if name in (p, n)]
+    if not hits:
+        names = ", ".join(f"{n} ({k} {p})" for p, (k, n) in mine.items()) or "none"
+        raise RuntimeError(
+            f'Nothing tmux_new opened is named "{name}". Opened by the agent: {names}.'
+        )
+    if len(hits) > 1:
+        ids = ", ".join(p for p, _, _ in hits)
+        raise RuntimeError(f'{len(hits)} things are named "{name}": pass one pane id: {ids}.')
+    return hits[0]
 
 
 def info(p: str) -> dict[str, str]:
@@ -465,6 +481,30 @@ async def tmux_new(
 
 
 @mcp.tool(
+    title="Move terminal pane",
+    annotations=ToolAnnotations(
+        readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False
+    ),
+)
+async def tmux_move(
+    name: Annotated[
+        str, Field(description='The name given to tmux_new, or the pane id it returned, e.g. "%7".')
+    ],
+    target_pane: Annotated[str, Field(description=TARGET_DOC)] = "",
+) -> str:
+    """Move a pane tmux_new opened into the window of `target_pane`, splitting it, so the
+    human sees both at once. Their view does not switch to it. Whatever runs in the pane
+    keeps running. Leaving a session or window empty closes it."""
+    p, _, n = find_opened(name)
+    t = await resolve(target_pane, create=True)
+    tmux("join-pane", "-d", "-s", p, "-t", t)
+    # whatever it was opened as, it is a lone pane now: tmux_kill must not kill-session here
+    tmux("set-option", "-p", "-t", p, "@tmux_mcp", f"pane {n}")
+    where = tmux("display", "-p", "-t", p, "#{session_name}:#{window_index}.#{pane_index}").strip()
+    return f'Moved pane {n} to {where}, next to {t}. Use target_pane="{p}".'
+
+
+@mcp.tool(
     title="Close terminal",
     annotations=ToolAnnotations(
         readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False
@@ -477,17 +517,7 @@ async def tmux_kill(
 ) -> str:
     """Close a session, window or pane that tmux_new opened, killing whatever runs in it.
     Refuses anything else, so the human's own panes are never closed."""
-    mine = opened()
-    hits = [(p, kind) for p, (kind, n) in mine.items() if name in (p, n)]
-    if not hits:
-        names = ", ".join(f"{n} ({k} {p})" for p, (k, n) in mine.items()) or "none"
-        raise RuntimeError(
-            f'Nothing tmux_new opened is named "{name}". Opened by the agent: {names}.'
-        )
-    if len(hits) > 1:
-        ids = ", ".join(p for p, _ in hits)
-        raise RuntimeError(f'{len(hits)} things are named "{name}": pass one pane id: {ids}.')
-    p, kind = hits[0]
+    p, kind, _ = find_opened(name)
     if kind == "pane":
         panes = [p]
     else:  # -s: every pane of the session, not just of one window
