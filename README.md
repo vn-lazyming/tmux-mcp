@@ -1,6 +1,6 @@
 # tmux-mcp
 
-A small MCP server that lets an AI agent type into a live tmux pane that you can watch and type in.
+A small MCP server that lets an your agent run commands interactively, not in one-shot mode, in a live tmux pane that you can watch and type in too.
 
 It is not limited to one session: the agent can list every tmux session, window and pane on the machine, create sessions with any name, and send keys to or read from any pane, including your own.
 
