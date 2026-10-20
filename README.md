@@ -2,15 +2,15 @@
 
 A small MCP server that lets an AI agent type into a live tmux pane that you can watch and type in.
 
-Interactive programs (python, gdb, ssh, nc, vim) keep running between calls.
+It is not limited to one session: the agent can list every tmux session, window and pane on the machine, create sessions with any name, and send keys to or read from any pane, including your own.
 
 ## Tools
 
-- `tmux_send`: type text or keys into a pane
-- `tmux_read`: read what's on the pane
-- `tmux_list_panes`: list panes
-- `tmux_new`: open a session, window or pane
-- `tmux_kill`: close one
+- `tmux_send`: type text or keys into any pane
+- `tmux_read`: read what's on any pane
+- `tmux_list_panes`: list all sessions, windows and panes
+- `tmux_new`: open a session, window or pane with a name you choose
+- `tmux_kill`: close one that the agent opened
 
 ## Setup
 
