@@ -14,9 +14,12 @@ It is not limited to one session: the agent can list every tmux session, window 
 
 ## Setup
 
+Needs [uv](https://docs.astral.sh/uv/) and tmux.
+
 ```sh
-pip install mcp
-claude mcp add tmux -- python3 /path/to/server.py
+git clone https://github.com/vn-lazyming/tmux-mcp
+cd tmux-mcp && uv sync
+claude mcp add tmux -- uv run --directory "$PWD" server.py
 ```
 
 Watch what the agent does:
@@ -26,6 +29,14 @@ tmux attach -t agent
 ```
 
 The session name defaults to `agent`. Change it with the `TMUX_MCP_SESSION` env var.
+
+## Develop
+
+```sh
+make dev    # install dev tools
+make lint   # ruff format --check, ruff check, ty
+make test   # self-check on a private tmux server
+```
 
 ## License
 
